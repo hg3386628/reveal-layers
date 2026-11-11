@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "levels": [
+    {
+      "id": "window",
+      "title": "雾窗庭院",
+      "titles": {
+        "zh_CN": "雾窗庭院",
+        "zh_TW": "霧窗庭院",
+        "en": "Foggy Window"
+      },
+      "top": "levels/window/top.jpg",
+      "bottom": "levels/window/bottom.jpg",
+      "thumb": "levels/window/thumb.jpg",
+      "defaultEffect": "fog"
+    },
+    {
+      "id": "letter",
+      "title": "蜡封印信",
+      "titles": {
+        "zh_CN": "蜡封印信",
+        "zh_TW": "蠟封印信",
+        "en": "Sealed Letter"
+      },
+      "top": "levels/letter/top.jpg",
+      "bottom": "levels/letter/bottom.jpg",
+      "thumb": "levels/letter/thumb.jpg",
+      "defaultEffect": "peel"
+    },
+    {
+      "id": "city",
+      "title": "夜尽黎明",
+      "titles": {
+        "zh_CN": "夜尽黎明",
+        "zh_TW": "夜盡黎明",
+        "en": "Night to Dawn"
+      },
+      "top": "levels/city/top.jpg",
+      "bottom": "levels/city/bottom.jpg",
+      "thumb": "levels/city/thumb.jpg",
+      "defaultEffect": "shatter"
+    }
+  ]
+}

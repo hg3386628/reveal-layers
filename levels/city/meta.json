@@ -1,0 +1,10 @@
+{
+  "title": "夜尽黎明",
+  "titles": {
+    "zh_CN": "夜尽黎明",
+    "zh_TW": "夜盡黎明",
+    "en": "Night to Dawn"
+  },
+  "defaultEffect": "shatter",
+  "order": 3
+}

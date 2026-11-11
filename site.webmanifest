@@ -1,0 +1,17 @@
+{
+  "name": "揭层",
+  "short_name": "揭层",
+  "display": "standalone",
+  "orientation": "any",
+  "start_url": "./",
+  "background_color": "#1a1410",
+  "theme_color": "#1a1410",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

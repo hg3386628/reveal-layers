@@ -1,0 +1,10 @@
+{
+  "title": "蜡封印信",
+  "titles": {
+    "zh_CN": "蜡封印信",
+    "zh_TW": "蠟封印信",
+    "en": "Sealed Letter"
+  },
+  "defaultEffect": "peel",
+  "order": 2
+}
