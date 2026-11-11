@@ -112,6 +112,16 @@ export function createHost(
         return null;
       }
     },
+    async readJson<T = unknown>(path: string): Promise<T | null> {
+      if (!sdk?.assets) return null;
+      try {
+        await sdk.ready;
+        return (await sdk.assets.readJson(path)) as T;
+      } catch (error) {
+        report(error);
+        return null;
+      }
+    },
     load(key: string) {
       return call("storage.read", () => sdk!.localStorage!.getItem!(key));
     },

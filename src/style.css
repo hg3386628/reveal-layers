@@ -299,3 +299,229 @@ body.is-immersive .fab {
     transition: none;
   }
 }
+
+body:not(.is-play) {
+  touch-action: pan-y;
+  overflow: auto;
+  overflow-x: hidden;
+  height: auto;
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+html:has(body:not(.is-play)) {
+  overflow: auto;
+  overflow-x: hidden;
+  height: auto;
+  min-height: 100%;
+  min-height: 100dvh;
+  touch-action: pan-y;
+}
+
+body:not(.is-play) #app {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+body:not(.is-play) #stage,
+body:not(.is-play) .hint,
+body:not(.is-play) .toolbar,
+body:not(.is-play) .fab,
+body:not(.is-play) .complete,
+body:not(.is-play) .notice {
+  display: none;
+}
+
+body.is-play .select {
+  display: none;
+}
+
+body.is-play #app {
+  overflow: hidden;
+  touch-action: none;
+}
+
+.select {
+  position: relative;
+  z-index: 6;
+  min-height: 100%;
+  min-height: 100dvh;
+  padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right))
+    calc(24px + var(--safe-bottom)) calc(16px + var(--safe-left));
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.select__bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.select__titles h1 {
+  margin: 0;
+  font-size: clamp(28px, 6vw, 42px);
+  letter-spacing: 0.08em;
+}
+
+.select__titles p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.select__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+.select__actions button,
+.complete button,
+#open-select {
+  font: inherit;
+  color: var(--text);
+  background: var(--btn);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  height: 32px;
+  padding: 0 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.select__actions button:hover,
+.complete button:hover,
+#open-select:hover {
+  background: var(--btn-hover);
+}
+
+.select__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 14px;
+}
+
+@media (min-width: 720px) {
+  .select__grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 18px;
+  }
+}
+
+.level-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--btn);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: var(--shadow);
+}
+
+.level-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.level-card__thumb {
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  object-fit: cover;
+  background: #2a2118;
+  display: block;
+}
+
+.level-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.level-card__title {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.level-card__done {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1410;
+  font-size: 13px;
+  font-weight: 700;
+  display: none;
+  place-items: center;
+  line-height: 1;
+}
+
+.level-card.is-done .level-card__done {
+  display: grid;
+}
+
+.complete {
+  position: absolute;
+  left: 50%;
+  bottom: calc(92px + var(--safe-bottom));
+  transform: translateX(-50%);
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(92vw, 440px);
+  padding: 18px 16px 16px;
+  border-radius: 20px;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.complete[hidden] {
+  display: none;
+}
+
+.complete h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.complete__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+body.is-select.is-shot .select__actions {
+  visibility: hidden;
+}
+
+.level-card.is-current {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow);
+}

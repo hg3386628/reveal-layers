@@ -1,4 +1,17 @@
 <div id="app">
+  <div id="select-screen" class="select">
+    <header class="select__bar">
+      <div class="select__titles">
+        <h1 data-text="title"></h1>
+        <p id="select-progress"></p>
+      </div>
+      <div class="select__actions">
+        <button id="select-random" type="button" data-text="random"></button>
+        <button id="select-fullscreen" type="button" data-text="fullscreen"></button>
+      </div>
+    </header>
+    <div id="level-grid" class="select__grid" role="list"></div>
+  </div>
   <canvas id="stage" aria-label="揭层画布"></canvas>
   <div id="hint" class="hint" role="status">
     <strong id="hint-title"></strong>
@@ -9,13 +22,10 @@
     <span class="visually-hidden" data-text="menu"></span>
   </button>
   <div id="toolbar" class="toolbar" role="toolbar">
+    <button id="open-select" type="button" data-text="openLevels"></button>
     <label class="field">
       <span data-text="effect"></span>
       <select id="effect"></select>
-    </label>
-    <label class="field">
-      <span data-text="level"></span>
-      <select id="level"></select>
     </label>
     <label class="field" id="brush-field">
       <span data-text="brush"></span>
@@ -23,6 +33,15 @@
     </label>
     <button id="reset" type="button" data-text="reset"></button>
     <button id="fullscreen" type="button" data-text="fullscreen"></button>
+  </div>
+  <div id="complete" class="complete" hidden>
+    <h2 data-text="revealed"></h2>
+    <div class="complete__actions">
+      <button id="back-select" type="button" data-text="backSelect"></button>
+      <button id="next-level" type="button" data-text="nextLevel"></button>
+      <button id="random-level" type="button" data-text="random"></button>
+      <button id="replay-complete" type="button" data-text="reset"></button>
+    </div>
   </div>
   <p id="notice" class="notice" role="status" aria-live="polite"></p>
 </div>

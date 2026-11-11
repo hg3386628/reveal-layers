@@ -1,0 +1,10 @@
+{
+  "title": "雾窗庭院",
+  "titles": {
+    "zh_CN": "雾窗庭院",
+    "zh_TW": "霧窗庭院",
+    "en": "Foggy Window"
+  },
+  "defaultEffect": "fog",
+  "order": 1
+}

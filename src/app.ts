@@ -1,11 +1,27 @@
-import { fitCover, loadImage } from "./assets.ts";
-import { createEffect, effectIds, isEffectId, AUTO_REVEAL, type Effect, type EffectId, type Surface } from "./effects/index.ts";
+import { assetUrl, fitCover, loadImage, mimeOf } from "./assets.ts";
+import {
+  AUTO_REVEAL,
+  createEffect,
+  effectIds,
+  isEffectId,
+  type Effect,
+  type EffectId,
+  type Surface,
+} from "./effects/index.ts";
 import type { Host } from "./host.ts";
-import { levelById, levels, type Level } from "./levels.ts";
+import {
+  levelById,
+  loadCatalog,
+  nextLevel,
+  randomLevel,
+  titleOf,
+  type Level,
+} from "./levels.ts";
 
 const PREF_EFFECT = "reveal-layers:effect";
 const PREF_LEVEL = "reveal-layers:level";
 const PREF_BRUSH = "reveal-layers:brush";
+const PREF_COMPLETED = "reveal-layers:completed";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -14,7 +30,6 @@ export async function startApp(host: Host) {
   const ctx = canvas.getContext("2d")!;
   const toolbar = $<HTMLDivElement>("toolbar");
   const effectSelect = $<HTMLSelectElement>("effect");
-  const levelSelect = $<HTMLSelectElement>("level");
   const brushInput = $<HTMLInputElement>("brush");
   const brushField = $<HTMLLabelElement>("brush-field");
   const resetBtn = $<HTMLButtonElement>("reset");
@@ -23,16 +38,26 @@ export async function startApp(host: Host) {
   const hintTitle = $<HTMLElement>("hint-title");
   const hintCopy = $<HTMLElement>("hint-copy");
   const noticeEl = $<HTMLElement>("notice");
+  const grid = $<HTMLElement>("level-grid");
+  const progressEl = $<HTMLElement>("select-progress");
+  const completeEl = $<HTMLElement>("complete");
+  const nextBtn = $<HTMLButtonElement>("next-level");
 
   let localeReady = false;
   let reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let effectId: EffectId = "scratch";
-  let level: Level = levels[0];
+  let levels: Level[] = [];
+  let level: Level | null = null;
   let effect: Effect = createEffect(effectId);
   let surface: Surface | null = null;
   let topSrc: (CanvasImageSource & { width: number; height: number }) | null = null;
   let bottomSrc: (CanvasImageSource & { width: number; height: number }) | null = null;
   const imageCache = new Map<string, CanvasImageSource & { width: number; height: number }>();
+  const thumbUrls = new Map<string, string>();
+  const completed = new Set<string>();
+  const prefetching = new Set<string>();
+  let lastPlayed: string | null = null;
+  let mode: "select" | "play" = "select";
   let revealed = false;
   let running = false;
   let lastTs = 0;
@@ -40,6 +65,7 @@ export async function startApp(host: Host) {
   let idleTimer = 0;
   let noticeTimer = 0;
   let starting = true;
+  let completeTimer = 0;
 
   const t = (key: string, values?: object) => host.t(key, values);
 
@@ -48,17 +74,20 @@ export async function startApp(host: Host) {
       node.textContent = t(node.dataset.text!);
     });
     canvas.setAttribute("aria-label", t("board"));
-    hintTitle.textContent = t(level.id);
+    if (level) hintTitle.textContent = titleOf(level, host.locale);
     const hintKey =
       effectId === "peel" ? "hintPeel" : effectId === "shatter" ? "hintShatter" : "hint";
     hintCopy.textContent = t(hintKey);
     fillSelect(effectSelect, effectIds, (id) => t(id), effectId);
-    fillSelect(levelSelect, levels.map((item) => item.id), (id) => t(id), level.id);
     brushInput.value = String(Math.round(surface?.brushCss ?? (Number(brushInput.value) || 42)));
     brushField.hidden = !effect.usesBrush;
-    fsBtn.textContent = isFullscreen() ? t("exitFullscreen") : t("fullscreen");
+    const fsLabel = t(isFullscreen() ? "exitFullscreen" : "fullscreen");
+    fsBtn.textContent = fsLabel;
+    const selectFs = document.getElementById("select-fullscreen");
+    if (selectFs) selectFs.textContent = fsLabel;
     document.title = t("title");
     localeReady = true;
+    if (mode === "select") renderGrid();
   }
 
   function fillSelect(
@@ -78,10 +107,14 @@ export async function startApp(host: Host) {
   }
 
   function isUi(target: EventTarget | null) {
-    return target instanceof Element && Boolean(target.closest(".toolbar, .fab, select, input, button"));
+    return (
+      target instanceof Element &&
+      Boolean(target.closest(".toolbar, .fab, .select, .complete, select, input, button"))
+    );
   }
 
   function pokeUi(hide = false) {
+    if (mode !== "play") return;
     window.clearTimeout(idleTimer);
     if (hide) {
       document.body.classList.add("is-idle");
@@ -120,7 +153,7 @@ export async function startApp(host: Host) {
     const wantOn = !isFullscreen();
     const sdkResult = wantOn ? await host.requestFullscreen() : await host.exitFullscreen();
     if (sdkResult) {
-      fsBtn.textContent = t(wantOn ? "exitFullscreen" : "fullscreen");
+      localize();
       return;
     }
     try {
@@ -128,6 +161,7 @@ export async function startApp(host: Host) {
         if (document.fullscreenElement) await document.exitFullscreen();
         else if (doc.webkitFullscreenElement) await doc.webkitExitFullscreen?.();
         document.body.classList.remove("is-immersive");
+        localize();
         return;
       }
       if (root.requestFullscreen) {
@@ -142,8 +176,8 @@ export async function startApp(host: Host) {
       /* fall through to the iOS-style immersive fallback */
     }
     document.body.classList.toggle("is-immersive", wantOn);
-    pokeUi(wantOn);
-    fsBtn.textContent = t(wantOn ? "exitFullscreen" : "fullscreen");
+    if (mode === "play") pokeUi(wantOn);
+    localize();
   }
 
   async function readPref(key: string) {
@@ -165,6 +199,10 @@ export async function startApp(host: Host) {
     }
   }
 
+  function persistCompleted() {
+    writePref(PREF_COMPLETED, JSON.stringify([...completed]));
+  }
+
   async function loadLevelImages(next: Level) {
     const load = async (path: string) => {
       const cached = imageCache.get(path);
@@ -176,6 +214,25 @@ export async function startApp(host: Host) {
     const [top, bottom] = await Promise.all([load(next.top), load(next.bottom)]);
     topSrc = top;
     bottomSrc = bottom;
+  }
+
+  function evictCache(keep: Level[]) {
+    const allowed = new Set(keep.flatMap((item) => [item.top, item.bottom]));
+    for (const key of [...imageCache.keys()]) {
+      if (!allowed.has(key)) imageCache.delete(key);
+    }
+  }
+
+  function prefetch(next: Level | undefined) {
+    if (!next || prefetching.has(next.id)) return;
+    prefetching.add(next.id);
+    void Promise.all([loadImage(next.top, host), loadImage(next.bottom, host)])
+      .then(([top, bottom]) => {
+        imageCache.set(next.top, top);
+        imageCache.set(next.bottom, bottom);
+      })
+      .catch((error) => console.warn(error))
+      .finally(() => prefetching.delete(next.id));
   }
 
   function currentBrush() {
@@ -200,6 +257,7 @@ export async function startApp(host: Host) {
   }
 
   function layout(resetEffect = false) {
+    if (mode !== "play") return;
     const vv = window.visualViewport;
     const cssW = Math.max(1, vv?.width ?? document.documentElement.clientWidth ?? window.innerWidth);
     const cssH = Math.max(1, vv?.height ?? document.documentElement.clientHeight ?? window.innerHeight);
@@ -212,8 +270,7 @@ export async function startApp(host: Host) {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const next = makeSurface(cssW, cssH, dpr);
     if (!next) return;
-    const resized =
-      !surface || surface.width !== next.width || surface.height !== next.height;
+    const resized = !surface || surface.width !== next.width || surface.height !== next.height;
     surface = next;
     if (canvas.width !== next.width) canvas.width = next.width;
     if (canvas.height !== next.height) canvas.height = next.height;
@@ -228,29 +285,38 @@ export async function startApp(host: Host) {
   }
 
   function paint() {
-    if (!surface) return;
+    if (mode !== "play" || !surface) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(surface.bottom, 0, 0);
     effect.draw(ctx, surface);
   }
 
   function kick() {
-    if (running || document.hidden) return;
+    if (mode !== "play" || running || document.hidden) return;
     running = true;
     lastTs = performance.now();
     requestAnimationFrame(frame);
   }
 
+  function markComplete() {
+    if (!level || revealed) return;
+    revealed = true;
+    effect.forceReveal();
+    completed.add(level.id);
+    persistCompleted();
+    window.clearTimeout(completeTimer);
+    completeTimer = window.setTimeout(() => {
+      completeEl.hidden = false;
+      nextBtn.hidden = levels.length < 2;
+    }, reducedMotion ? 0 : 480);
+  }
+
   function frame(ts: number) {
-    if (!running) return;
+    if (!running || mode !== "play") return;
     const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
     lastTs = ts;
     const anim = effect.update(dt);
-    if (!revealed && effect.clearedRatio() >= AUTO_REVEAL) {
-      revealed = true;
-      effect.forceReveal();
-      notice(t("revealed"));
-    }
+    if (!revealed && effect.clearedRatio() >= AUTO_REVEAL) markComplete();
     paint();
     if (anim) requestAnimationFrame(frame);
     else running = false;
@@ -267,20 +333,57 @@ export async function startApp(host: Host) {
     };
   }
 
-  async function applyLevel(id: string, persist = true) {
-    level = levelById(id);
+  function showSelect() {
+    mode = "select";
+    running = false;
+    revealed = false;
+    window.clearTimeout(completeTimer);
+    completeEl.hidden = true;
+    document.body.classList.add("is-select");
+    document.body.classList.remove("is-play", "is-idle");
+    menuBtn.setAttribute("aria-expanded", "false");
+    localize();
+    renderGrid();
+    const current = lastPlayed
+      ? grid.querySelector(`.level-card[data-id="${CSS.escape(lastPlayed)}"]`)
+      : null;
+    current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+
+  async function enterLevel(id: string, persist = true) {
+    if (!levels.length) return;
+    const next = levelById(levels, id);
+    notice(t("loading"));
     try {
-      await loadLevelImages(level);
+      await loadLevelImages(next);
     } catch (error) {
       console.warn(error);
       notice(t("loadError"));
       return;
     }
+    const upcoming = nextLevel(levels, next);
+    evictCache(upcoming && upcoming.id !== next.id ? [next, upcoming] : [next]);
+    level = next;
+    if (next.defaultEffect && isEffectId(next.defaultEffect)) {
+      applyEffect(next.defaultEffect, false);
+    }
+    mode = "play";
     starting = true;
+    revealed = false;
+    window.clearTimeout(completeTimer);
+    completeEl.hidden = true;
+    document.body.classList.remove("is-select");
+    document.body.classList.add("is-play");
     layout(true);
     localize();
-    if (persist) writePref(PREF_LEVEL, level.id);
+    notice("");
+    if (persist) {
+      lastPlayed = next.id;
+      writePref(PREF_LEVEL, next.id);
+    }
+    pokeUi();
     kick();
+    prefetch(upcoming && upcoming.id !== next.id ? upcoming : undefined);
   }
 
   function applyEffect(id: string, persist = true) {
@@ -289,26 +392,125 @@ export async function startApp(host: Host) {
     effectId = nextId;
     effect = createEffect(effectId);
     revealed = false;
-    if (surface) effect.reset(surface);
+    window.clearTimeout(completeTimer);
+    completeEl.hidden = true;
+    if (surface && mode === "play") effect.reset(surface);
     brushField.hidden = !effect.usesBrush;
     effectSelect.value = effectId;
-    localize();
+    if (localeReady) {
+      const hintKey =
+        effectId === "peel" ? "hintPeel" : effectId === "shatter" ? "hintShatter" : "hint";
+      hintCopy.textContent = t(hintKey);
+    }
     if (persist) writePref(PREF_EFFECT, effectId);
     paint();
   }
 
   function replay() {
     revealed = false;
+    window.clearTimeout(completeTimer);
+    completeEl.hidden = true;
     if (surface) effect.reset(surface);
     notice("");
     paint();
+    pokeUi();
     kick();
+  }
+
+  async function thumbSrc(path: string) {
+    const cached = thumbUrls.get(path);
+    if (cached) return cached;
+    const bytes = await host.readAsset(path);
+    if (bytes) {
+      const copy = new Uint8Array(bytes.byteLength);
+      copy.set(bytes);
+      const url = URL.createObjectURL(new Blob([copy], { type: mimeOf(path) }));
+      thumbUrls.set(path, url);
+      return url;
+    }
+    return assetUrl(path);
+  }
+
+  function bindThumb(img: HTMLImageElement, path: string) {
+    const cached = thumbUrls.get(path);
+    if (cached) {
+      img.src = cached;
+      return;
+    }
+    const load = () => {
+      void thumbSrc(path)
+        .then((url) => {
+          img.src = url;
+        })
+        .catch(() => {
+          img.src = assetUrl(path);
+        });
+    };
+    if (typeof IntersectionObserver !== "function") {
+      load();
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        io.disconnect();
+        load();
+      },
+      { root: document.querySelector(".select"), rootMargin: "240px" }
+    );
+    io.observe(img);
+  }
+
+  function renderGrid() {
+    progressEl.textContent = t("progress", { done: completed.size, total: levels.length });
+    const existing = new Map(
+      [...grid.querySelectorAll<HTMLButtonElement>(".level-card")].map((node) => [
+        node.dataset.id,
+        node,
+      ])
+    );
+    grid.textContent = "";
+    for (const item of levels) {
+      const card = existing.get(item.id) ?? document.createElement("button");
+      card.type = "button";
+      card.className = "level-card";
+      card.dataset.id = item.id;
+      card.setAttribute("role", "listitem");
+      const name = titleOf(item, host.locale);
+      const done = completed.has(item.id);
+      card.classList.toggle("is-done", done);
+      card.classList.toggle("is-current", item.id === lastPlayed);
+      card.setAttribute("aria-label", done ? `${name}，${t("completed")}` : name);
+      if (!card.hasChildNodes()) {
+        const img = document.createElement("img");
+        img.className = "level-card__thumb";
+        img.alt = "";
+        img.width = 360;
+        img.height = 480;
+        img.loading = "lazy";
+        img.decoding = "async";
+        const meta = document.createElement("span");
+        meta.className = "level-card__meta";
+        const title = document.createElement("span");
+        title.className = "level-card__title";
+        const mark = document.createElement("span");
+        mark.className = "level-card__done";
+        mark.setAttribute("aria-hidden", "true");
+        mark.textContent = "✓";
+        meta.append(title, mark);
+        card.append(img, meta);
+        bindThumb(img, item.thumb);
+      }
+      const title = card.querySelector(".level-card__title");
+      if (title) title.textContent = name;
+      grid.append(card);
+    }
   }
 
   canvas.addEventListener(
     "pointerdown",
     (ev) => {
-      if (isUi(ev.target) || ev.button) return;
+      if (mode !== "play" || isUi(ev.target) || ev.button) return;
       ev.preventDefault();
       if (activePointer !== null) return;
       activePointer = ev.pointerId;
@@ -326,7 +528,7 @@ export async function startApp(host: Host) {
   canvas.addEventListener(
     "pointermove",
     (ev) => {
-      if (ev.pointerId !== activePointer) return;
+      if (mode !== "play" || ev.pointerId !== activePointer) return;
       ev.preventDefault();
       effect.pointerMove(pointFrom(ev));
       kick();
@@ -334,7 +536,7 @@ export async function startApp(host: Host) {
     { passive: false }
   );
   const endPointer = (ev: PointerEvent) => {
-    if (ev.pointerId !== activePointer) return;
+    if (mode !== "play" || ev.pointerId !== activePointer) return;
     ev.preventDefault();
     effect.pointerUp(pointFrom(ev));
     activePointer = null;
@@ -344,7 +546,7 @@ export async function startApp(host: Host) {
   canvas.addEventListener("pointercancel", endPointer, { passive: false });
 
   const blockScroll = (ev: Event) => {
-    if (isUi(ev.target)) return;
+    if (mode !== "play" || isUi(ev.target)) return;
     ev.preventDefault();
   };
   document.addEventListener("touchmove", blockScroll, { passive: false });
@@ -357,7 +559,6 @@ export async function startApp(host: Host) {
     pokeUi(hidden);
   });
   effectSelect.addEventListener("change", () => applyEffect(effectSelect.value));
-  levelSelect.addEventListener("change", () => void applyLevel(levelSelect.value));
   brushInput.addEventListener("input", () => {
     if (surface) surface.brushCss = currentBrush();
     writePref(PREF_BRUSH, String(currentBrush()));
@@ -365,9 +566,28 @@ export async function startApp(host: Host) {
   });
   resetBtn.addEventListener("click", () => {
     replay();
-    pokeUi();
   });
   fsBtn.addEventListener("click", () => void toggleFullscreen());
+  $("select-fullscreen").addEventListener("click", () => void toggleFullscreen());
+  $("open-select").addEventListener("click", () => showSelect());
+  $("back-select").addEventListener("click", () => showSelect());
+  $("next-level").addEventListener("click", () => {
+    if (!level) return;
+    void enterLevel(nextLevel(levels, level).id);
+  });
+  $("random-level").addEventListener("click", () => {
+    const pick = randomLevel(levels, level ?? undefined);
+    if (pick) void enterLevel(pick.id);
+  });
+  $("select-random").addEventListener("click", () => {
+    const pick = randomLevel(levels);
+    if (pick) void enterLevel(pick.id);
+  });
+  $("replay-complete").addEventListener("click", () => replay());
+  grid.addEventListener("click", (ev) => {
+    const card = ev.target instanceof Element ? ev.target.closest<HTMLButtonElement>(".level-card") : null;
+    if (card?.dataset.id) void enterLevel(card.dataset.id);
+  });
 
   const onResize = () => layout(false);
   window.addEventListener("resize", onResize);
@@ -375,7 +595,7 @@ export async function startApp(host: Host) {
   window.visualViewport?.addEventListener("resize", onResize);
   window.visualViewport?.addEventListener("scroll", onResize);
   document.addEventListener("fullscreenchange", () => {
-    fsBtn.textContent = t(isFullscreen() ? "exitFullscreen" : "fullscreen");
+    localize();
     layout(false);
   });
   document.addEventListener("visibilitychange", () => {
@@ -396,31 +616,42 @@ export async function startApp(host: Host) {
     : "dark";
 
   await host.connect();
-  const [savedEffect, savedLevel, savedBrush] = await Promise.all([
+  const [savedEffect, savedLevel, savedBrush, savedCompleted] = await Promise.all([
     readPref(PREF_EFFECT),
     readPref(PREF_LEVEL),
     readPref(PREF_BRUSH),
+    readPref(PREF_COMPLETED),
   ]);
+  if (savedLevel) lastPlayed = savedLevel;
   if (savedEffect && isEffectId(savedEffect)) effectId = savedEffect;
-  if (savedLevel) level = levelById(savedLevel);
   if (savedBrush && Number(savedBrush)) brushInput.value = savedBrush;
+  if (savedCompleted) {
+    try {
+      const parsed = JSON.parse(savedCompleted) as unknown;
+      if (Array.isArray(parsed)) {
+        for (const id of parsed) if (typeof id === "string") completed.add(id);
+      }
+    } catch {
+      /* ignore broken save */
+    }
+  }
   effect = createEffect(effectId);
 
-  localize();
-  pokeUi();
   try {
-    await loadLevelImages(level);
-    layout(true);
+    levels = await loadCatalog(host);
   } catch (error) {
     console.warn(error);
     notice(t("loadError"));
   }
+
+  document.body.classList.add("is-select");
+  localize();
+  showSelect();
   await host.rendered();
-  kick();
 
   return {
-    setTheme(mode: "light" | "dark", reduced?: boolean, lock = true) {
-      document.documentElement.dataset.theme = mode;
+    setTheme(modeName: "light" | "dark", reduced?: boolean, lock = true) {
+      document.documentElement.dataset.theme = modeName;
       if (lock) document.documentElement.dataset.themeLocked = "1";
       if (reduced !== undefined) {
         reducedMotion = reduced;

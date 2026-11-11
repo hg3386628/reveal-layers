@@ -17,9 +17,6 @@
     "fog": "擦雾玻璃",
     "peel": "揭贴纸",
     "shatter": "碎裂",
-    "window": "雾窗庭院",
-    "letter": "蜡封印信",
-    "city": "夜尽黎明",
     "preview": "本地预览",
     "connected": "已连接社区",
     "guest": "访客模式",
@@ -27,7 +24,14 @@
     "apiError": "社区接口暂不可用（{code}）",
     "saved": "偏好已保存",
     "loadError": "图片加载失败，请刷新重试",
-    "board": "揭层画布"
+    "board": "揭层画布",
+    "backSelect": "返回选关",
+    "nextLevel": "下一关",
+    "random": "随机",
+    "openLevels": "选关",
+    "progress": "已完成 {done}/{total}",
+    "completed": "已完成",
+    "loading": "正在载入…"
   },
   "zh_TW": {
     "title": "揭層",
@@ -47,9 +51,6 @@
     "fog": "擦霧玻璃",
     "peel": "揭貼紙",
     "shatter": "碎裂",
-    "window": "霧窗庭院",
-    "letter": "蠟封印信",
-    "city": "夜盡黎明",
     "preview": "本機預覽",
     "connected": "已連接社區",
     "guest": "訪客模式",
@@ -57,7 +58,14 @@
     "apiError": "社區介面暫不可用（{code}）",
     "saved": "偏好已儲存",
     "loadError": "圖片載入失敗，請重新整理",
-    "board": "揭層畫布"
+    "board": "揭層畫布",
+    "backSelect": "返回選關",
+    "nextLevel": "下一關",
+    "random": "隨機",
+    "openLevels": "選關",
+    "progress": "已完成 {done}/{total}",
+    "completed": "已完成",
+    "loading": "正在載入…"
   },
   "en": {
     "title": "Reveal Layers",
@@ -77,9 +85,6 @@
     "fog": "Fog wipe",
     "peel": "Corner peel",
     "shatter": "Shatter",
-    "window": "Foggy Window",
-    "letter": "Sealed Letter",
-    "city": "Night to Dawn",
     "preview": "Local preview",
     "connected": "Connected",
     "guest": "Guest",
@@ -87,6 +92,13 @@
     "apiError": "Community API failed ({code})",
     "saved": "Preferences saved",
     "loadError": "Could not load images. Please refresh.",
-    "board": "Reveal canvas"
+    "board": "Reveal canvas",
+    "backSelect": "Level select",
+    "nextLevel": "Next",
+    "random": "Random",
+    "openLevels": "Levels",
+    "progress": "Completed {done}/{total}",
+    "completed": "Completed",
+    "loading": "Loading…"
   }
 }

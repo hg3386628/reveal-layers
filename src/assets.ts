@@ -1,10 +1,21 @@
 import type { Host } from "./host.ts";
 
-const mimeOf = (path: string) =>
-  path.endsWith(".png") ? "image/png" : "image/jpeg";
+export const mimeOf = (path: string) => {
+  const lower = path.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  return "image/jpeg";
+};
 
 export function assetUrl(path: string) {
   return new URL(path, document.baseURI).href;
+}
+
+export async function loadJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+  return (await response.json()) as T;
 }
 
 async function decodeBitmap(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
