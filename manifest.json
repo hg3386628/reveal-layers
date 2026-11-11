@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "id": "01a1c8f3-639a-7d54-882d-2cabaf5bb215",
+  "name": "揭层",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "script": "app.js",
+  "style": "app.css",
+  "permissions": ["theme.read", "fullscreen", "storage.read", "storage.write"],
+  "assets": [
+    "images/window-top.jpg",
+    "images/window-bottom.jpg",
+    "images/city-top.jpg",
+    "images/city-bottom.jpg",
+    "images/letter-top.jpg",
+    "images/letter-bottom.jpg"
+  ]
+}

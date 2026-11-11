@@ -1,0 +1,28 @@
+<div id="app">
+  <canvas id="stage" aria-label="揭层画布"></canvas>
+  <div id="hint" class="hint" role="status">
+    <strong id="hint-title"></strong>
+    <span id="hint-copy" data-text="hint"></span>
+  </div>
+  <button id="menu-toggle" type="button" class="fab" aria-expanded="false" aria-controls="toolbar">
+    <span class="fab__icon" aria-hidden="true"></span>
+    <span class="visually-hidden" data-text="menu"></span>
+  </button>
+  <div id="toolbar" class="toolbar" role="toolbar">
+    <label class="field">
+      <span data-text="effect"></span>
+      <select id="effect"></select>
+    </label>
+    <label class="field">
+      <span data-text="level"></span>
+      <select id="level"></select>
+    </label>
+    <label class="field" id="brush-field">
+      <span data-text="brush"></span>
+      <input id="brush" type="range" min="18" max="92" value="42" />
+    </label>
+    <button id="reset" type="button" data-text="reset"></button>
+    <button id="fullscreen" type="button" data-text="fullscreen"></button>
+  </div>
+  <p id="notice" class="notice" role="status" aria-live="polite"></p>
+</div>

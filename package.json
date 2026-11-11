@@ -1,0 +1,26 @@
+{
+  "name": "reveal-layers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "双层揭图小游戏：刮开、撕纸、擦雾、揭贴纸、碎裂",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && vite build && vite build --config vite.mapp.config.ts && node scripts/package.mjs",
+    "build:pages": "vite build",
+    "build:mapp": "vite build --config vite.mapp.config.ts && node scripts/package.mjs",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "test:shots": "node scripts/shots.mjs",
+    "images": "python3 scripts/generate_images.py"
+  },
+  "dependencies": {
+    "@discourse-mini-app/sdk": "file:./sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "playwright-core": "^1.49.0",
+    "typescript": "~5.9.3",
+    "vite": "^6.3.5"
+  }
+}
